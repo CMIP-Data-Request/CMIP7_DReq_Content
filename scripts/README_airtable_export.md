@@ -6,7 +6,7 @@ If you only care about **using** the export and don't need to generate it, skip 
 An airtable "raw export" to a json file is done by the script `airtable_export.py`.
 It can be run at the command-line to export to a specified filename:
 ```
-./airtable_export.py -t my_token_file -f dreq_raw_export.json
+./airtable_export.py -t my_token_file -f ../airtable_export/dreq_raw_export.json
 ```
 Or, if the filename is omitted:
 ```

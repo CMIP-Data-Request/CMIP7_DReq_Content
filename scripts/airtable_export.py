@@ -22,7 +22,7 @@ parser.add_argument('-t', '--token', type=str, help=\
 args = parser.parse_args()
 
 # Record date & time of this export
-timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%Hh%Mm%SsUTC')
+export_time = datetime.datetime.now()
 
 # Get Airtable key string.
 # This allows pyairtable to access Airtable and download content from all the bases that are accessible via this key.
@@ -89,7 +89,9 @@ for base in api.bases():
     bases[base.name] = tables
     del tables
 
-filepath = args.filepath.format(timestamp=timestamp)
+print('\nAirtable content exported at ' + export_time.strftime('%Y %b %d %H:%M:%S UTC'))
+
+filepath = args.filepath.format(timestamp=export_time.strftime('%Y-%m-%d_%Hh%Mm%SsUTC'))
 with open(filepath, 'w') as f:
     json.dump(bases, f, sort_keys=True, indent=4)
     print(f'Wrote {filepath}')
