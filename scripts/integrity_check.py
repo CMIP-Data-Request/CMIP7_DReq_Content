@@ -10,13 +10,19 @@ Usage:
 
 '''
 import json
+import argparse
 
-try: bases
-except:
-    filepath = '../airtable_export/dreq_raw_export.json'
-    with open(filepath, 'r') as f:
-        bases = json.load(f)
-        print(f'Opened {filepath}')
+parser = argparse.ArgumentParser(description='Simple script to check consistency of links between tables in json file created by airtable_export.py.')
+parser.add_argument('filepath', type=str, help=\
+                    f'exported content json file to check')
+parser.add_argument('-r', '--release', type=str, default='', help=\
+                    'if this is an official release export, give the release tag (example: -r v1.0beta)')
+args = parser.parse_args()
+
+filepath = args.filepath
+with open(filepath, 'r') as f:
+    bases = json.load(f)
+    print(f'Opened {filepath}')
 
 # Show names of bases, their tables, and number of records in each table
 for base_name, tables in bases.items():
@@ -73,10 +79,15 @@ for base_name, tables in bases.items():
 print('\nNo link errors found in exported Airtable bases')
 
 # While we're here, check uniqueness of variable Compound Names
-check_base_tables = {
-    'Data Request Variables (Public)' : ['Variable'],
-    'Data Request Opportunities (Public)' : ['Variables']
-}
+if args.release != '':
+    check_base_tables = {
+        f'Data Request {args.release}' : ['Variables'],
+    }
+else:
+    check_base_tables = {
+        'Data Request Variables (Public)' : ['Variable'],
+        'Data Request Opportunities (Public)' : ['Variables']
+    }
 for base_name in check_base_tables:
     print(f'\nChecking uniqueness of Compound Name in base: {base_name}')
     for table_name in check_base_tables[base_name]:
