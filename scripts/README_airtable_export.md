@@ -1,5 +1,8 @@
 This README explains how to export the Airtable content to json, and what's in the export.
-If you only care about **using** the export and don't need to generate it, skip ahead to the **Structure** section.
+If you need to know about **using** the export and don't need to generate it, skip ahead to the **Structure** section.
+
+Please note however that **the json file of exported content is not intended for direct use by general users of the data request software**.
+The description provided here is for reference by developers of the software.
 
 ## How to export the Airtable data request content
 
