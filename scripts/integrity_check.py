@@ -54,11 +54,32 @@ for base_name, tables in bases.items():
     for table_name, table in tables.items():
         print(table_name)
 
+        # if args.release == '':  # if this is a working bases export
+
+        #     # Fixing issue with non-unique field names in v1.0 working bases export
+        #     remove_field_id = []
+        #     for field_id, field in table['fields'].items():
+        #         if table_name == 'Experiment Group':
+        #             pass
+        #             # if field['name'] == 'Experiments' and field['description'] is None:
+        #             #     remove_field_id.append(field_id)
+        #         elif table_name == 'Opportunity':
+        #             if field['name'] == 'Comments' and field['description'] is None:
+        #                 remove_field_id.append(field_id)
+        #         elif table_name == 'Variable':
+        #             if field['name'] == 'Comments' and field['description'] is None:
+        #                 remove_field_id.append(field_id)
+
+        #     for field_id in remove_field_id:
+        #         print(f'Removing field {field_id} in table {table_name}')
+        #         table['fields'].pop(field_id)
+        #     del remove_field_id
+
         # Make dict with info on fields, indexed by field name (instead of field id)
         fields = {}
         for field_id, field in table['fields'].items():
             name = field['name']
-            assert name not in fields, 'field names are not unique'
+            assert name not in fields, f'field names in table {table_name} are not unique: {name}'
             fields[name] = field
 
         records = table['records']
@@ -68,7 +89,23 @@ for base_name, tables in bases.items():
                 if 'linked_table_id' in field:
                     # This field in the record contains a list of links to records in another table
                     record_links = record[name]  # list of record ids
+
                     assert isinstance(record_links, list), 'links to other records should be in a list'
+                    # if not isinstance(record_links, list):
+                    #     print(f'Skipping invalid link in {table_name} for field: {name}')
+                    #     continue
+
+
+                    #     print()
+                    #     print(table_name)
+                    #     print(record['Title of Opportunity'])
+                    #     print(record['Comments'])
+                    #     print()
+                    #     print(name)
+                    #     print(record_links)
+                    #     print(type(record_links))
+                    #     stop
+
                     assert all([check_id(uid, 'record') for uid in record_links]), 'unrecognized format for record links'
                     
                     linked_table_name = table_id2name[ field['linked_table_id'] ]
@@ -92,6 +129,10 @@ for base_name in check_base_tables:
     print(f'\nChecking uniqueness of Compound Name in base: {base_name}')
     for table_name in check_base_tables[base_name]:
         print(f'  Checking table: {table_name}')
+        if base_name not in bases:
+            msg = f'Base name not found: "{base_name}"'
+            msg += '\nDoes the release version need to be specified? Invoke with -r option, example: -r v1.0beta'
+            raise Exception(msg)
         table = bases[base_name][table_name]
         nrec = len(table['records'])
         names = [ record['Compound Name'] for record in table['records'].values() ]
