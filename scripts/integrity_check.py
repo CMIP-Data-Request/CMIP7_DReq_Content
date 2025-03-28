@@ -49,6 +49,7 @@ def check_aeid(aeid : str, aeid_type : str) -> bool:
 # - integrity of record links in each base
 # - uniqueness of uid (unique identifier, example: "3ba74dd0-8ca2-11ef-944e-41a8eb05f654")
 all_uid = set()
+non_unique_uid = set()
 for base_name, tables in bases.items():
     print('\n' + base_name)
 
@@ -97,7 +98,7 @@ for base_name, tables in bases.items():
                 if name.lower() == 'uid':
                     uid = record[name]
                     if uid in all_uid:
-                        raise ValueError('Another record already used this uid: ' + uid)
+                        non_unique_uid.add(uid)
                     else:
                         all_uid.add(uid)
 
@@ -119,7 +120,16 @@ for base_name, tables in bases.items():
 
 # If we've got this far without errors, the integrity of links is ok.
 print('\nNo link errors found in exported Airtable bases')
-print(f'Found {len(all_uid)} unique identifiers (UID)')
+
+print(f'\nFound {len(all_uid)} unique identifiers (UID)')
+if len(non_unique_uid) > 0:
+    filepath = 'non_unique_uid.txt'
+    with open(filepath, 'w') as f:
+        f.write('\n'.join(sorted(non_unique_uid)))
+    raise ValueError(f'{len(non_unique_uid)} of these UIDs were not actually unique!\nWrote ' + filepath)
+    
+    # raise ValueError('Another record already used this UID: ' + uid)
+
 
 # While we're here, check uniqueness of variable Compound Names
 if args.release != '':
