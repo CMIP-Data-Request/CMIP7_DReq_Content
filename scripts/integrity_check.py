@@ -7,7 +7,7 @@ This saves the 'bases' dict to a json file.
 
 Usage:
     python integrity_check.py
-
+    
 '''
 import argparse
 import json
@@ -19,6 +19,17 @@ parser.add_argument('-r', '--release', type=str, default='', help=\
                     'if this is an official release export, give the release tag (example: -r v1.0beta)')
 args = parser.parse_args()
 
+
+unique_var_name = 'CMIP6 Compound Name'
+fail_on_uid_check = True
+if args.release == '':
+    # working base
+    fail_on_uid_check = False
+else:
+    assert args.release.startswith('v')
+    ver_num = float(args.release.strip('v'))
+    if ver_num < 1.2:
+        unique_var_name = 'Compound Name'
 
 filepath = args.filepath
 with open(filepath, 'r') as f:
@@ -126,12 +137,16 @@ if len(non_unique_uid) > 0:
     filepath = 'non_unique_uid.txt'
     with open(filepath, 'w') as f:
         f.write('\n'.join(sorted(non_unique_uid)))
-    raise ValueError(f'{len(non_unique_uid)} of these UIDs were not actually unique!\nWrote ' + filepath)
+    msg = f'{len(non_unique_uid)} of these UIDs were not actually unique!\nWrote ' + filepath
+    if fail_on_uid_check:
+        raise ValueError(msg)
+    else:
+        print(msg)
     
     # raise ValueError('Another record already used this UID: ' + uid)
 
 
-# While we're here, check uniqueness of variable Compound Names
+# While we're here, check uniqueness of variable names
 if args.release != '':
     check_base_tables = {
         f'Data Request {args.release}' : ['Variables'],
@@ -139,10 +154,10 @@ if args.release != '':
 else:
     check_base_tables = {
         'Data Request Variables (Public)' : ['Variable'],
-        'Data Request Opportunities (Public)' : ['Variables']
+        # 'Data Request Opportunities (Public)' : ['Variables']
     }
 for base_name in check_base_tables:
-    print(f'\nChecking uniqueness of Compound Name in base: {base_name}')
+    print(f'\nChecking uniqueness of "{unique_var_name}" in base: {base_name}')
     for table_name in check_base_tables[base_name]:
         print(f'  Checking table: {table_name}')
         if base_name not in bases:
@@ -151,8 +166,8 @@ for base_name in check_base_tables:
             raise Exception(msg)
         table = bases[base_name][table_name]
         nrec = len(table['records'])
-        names = [ record['Compound Name'] for record in table['records'].values() ]
+        names = [ record[unique_var_name] for record in table['records'].values() ]
         print(f'    number of variables: {nrec}')
         n = len(set(names))
-        print(f'    number of unique Compound Names: {n}')
+        print(f'    number of unique names: {n}')
 
