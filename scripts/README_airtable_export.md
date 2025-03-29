@@ -146,4 +146,8 @@ The field description indicates which table a link points to, which in the above
 (In this instance it's obvious which table is linked to because the field name is the same as the table name, but that's not required and isn't always the case.)
 
 The script `integrity_check.py` some simple sanity checks on the links, and uniqueness of Compound Names.
-
+It can be run at the command line, for example:
+```bash
+./integrity_check.py ../airtable_export/dreq_release_export.json -r v1.1
+```
+Invoke with `-h` for more info.
