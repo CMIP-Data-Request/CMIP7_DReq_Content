@@ -11,8 +11,6 @@ Examples:
 '''
 import argparse
 import json
-import re
-
 
 def check_aeid(aeid: str, aeid_type: str) -> bool:
     '''
@@ -27,25 +25,6 @@ def check_aeid(aeid: str, aeid_type: str) -> bool:
     return isinstance(aeid, str) and aeid.startswith(prefix) and len(aeid) == 17
 
 
-def get_dreq_version_tuple(version: str):
-    '''
-    Parse version string to return tuple giving version major, minor (etc) numbers.
-    Examples:
-        get_dreq_version_tuple('v1.2') --> (1,2)
-        get_dreq_version_tuple('v1.0beta') --> (1,0)
-    '''
-    if version == 'dev':
-        # Is a tuple needed/useful for 'dev' versions? Set one just in case.
-        return (0,)
-    else:
-        patt = '[0-9.]*[0-9]'
-        ver_num = re.findall(patt, version)
-        if len(ver_num) != 1:
-            raise ValueError('Ambiguous version string: ' + version)
-        ver_num_str = ver_num[0]
-        return tuple(map(int, ver_num_str.split('.')))
-
-
 def main():
 
     parser = argparse.ArgumentParser(
@@ -55,15 +34,16 @@ def main():
                         help='if this is an official release export, provide the release tag (example: -r v1.0beta)')
     args = parser.parse_args()
 
-    unique_var_name = 'CMIP6 Compound Name'
+    # If the following variable names occur, check that they're unique
+    check_unique_var_name = []
+    check_unique_var_name.append('Compound Name')
+    check_unique_var_name.append('CMIP6 Compound Name')
+    check_unique_var_name.append('CMIP7 Compound Name')
+    # TO DO: add check based on unique name incorporating branded variables if needed
     fail_on_uid_check = True
     if args.release == '':
-        # working base
+        # raw bases (aka "working bases")
         fail_on_uid_check = False
-    else:
-        ver_num = get_dreq_version_tuple(args.release)
-        if ver_num < (1, 2):
-            unique_var_name = 'Compound Name'
 
     filepath = args.filepath
     with open(filepath, 'r') as f:
@@ -94,30 +74,9 @@ def main():
         for table_name, table in tables.items():
             print(table_name)
 
-            # if args.release == '':  # if this is a working bases export
-
-            #     # Fixing issue with non-unique field names in v1.0 working bases export
-            #     remove_field_id = []
-            #     for field_id, field in table['fields'].items():
-            #         if table_name == 'Experiment Group':
-            #             pass
-            #             # if field['name'] == 'Experiments' and field['description'] is None:
-            #             #     remove_field_id.append(field_id)
-            #         elif table_name == 'Opportunity':
-            #             if field['name'] == 'Comments' and field['description'] is None:
-            #                 remove_field_id.append(field_id)
-            #         elif table_name == 'Variable':
-            #             if field['name'] == 'Comments' and field['description'] is None:
-            #                 remove_field_id.append(field_id)
-
-            #     for field_id in remove_field_id:
-            #         print(f'Removing field {field_id} in table {table_name}')
-            #         table['fields'].pop(field_id)
-            #     del remove_field_id
-
             # Make dict with info on fields, indexed by field name (instead of field id)
             fields = {}
-            for field_id, field in table['fields'].items():
+            for field in table['fields'].values():
                 name = field['name']
                 assert name not in fields, f'field names in table {table_name} are not unique: {name}'
                 fields[name] = field
@@ -165,32 +124,41 @@ def main():
         else:
             print(msg)
 
-        # raise ValueError('Another record already used this UID: ' + uid)
-
-    # While we're here, check uniqueness of variable names
-    if args.release != '':
-        check_base_tables = {
-            f'Data Request {args.release}': ['Variables'],
-        }
-    else:
-        check_base_tables = {
-            'Data Request Variables (Public)': ['Variable'],
-            # 'Data Request Opportunities (Public)' : ['Variables']
-        }
-    for base_name in check_base_tables:
-        print(f'\nChecking uniqueness of "{unique_var_name}" in base: {base_name}')
-        for table_name in check_base_tables[base_name]:
-            print(f'  Checking table: {table_name}')
-            if base_name not in bases:
-                msg = f'Base name not found: "{base_name}"'
-                msg += '\nDoes the release version need to be specified? Invoke with -r option, example: -r v1.0beta'
-                raise Exception(msg)
-            table = bases[base_name][table_name]
-            nrec = len(table['records'])
-            names = [record[unique_var_name] for record in table['records'].values()]
-            print(f'    number of variables: {nrec}')
-            n = len(set(names))
-            print(f'    number of unique names: {n}')
+    for unique_var_name in check_unique_var_name:
+        # Check uniqueness of variable names
+        if args.release == '':
+            # raw export
+            check_base_tables = {
+                'Data Request Variables (Public)': ['Variable'],
+                # 'Data Request Opportunities (Public)' : ['Variables']
+            }
+        else:
+            # release export
+            check_base_tables = {
+                f'Data Request {args.release}': ['Variables'],
+            }
+        for base_name in check_base_tables:
+            print(f'\nChecking uniqueness of "{unique_var_name}" in base: {base_name}')
+            for table_name in check_base_tables[base_name]:
+                if base_name not in bases:
+                    msg = f'Base name not found: "{base_name}"'
+                    msg += '\nDoes the release version need to be specified? Invoke with -r option, example: -r v1.2'
+                    raise Exception(msg)
+                table = bases[base_name][table_name]
+                # Get names of all fields in this table
+                field_names = [field['name'] for field in table['fields'].values()]
+                if unique_var_name in field_names:
+                    print(f'  Checking table: {table_name}')
+                else:
+                    print(f'  "{unique_var_name}" not found in table: {table_name}')
+                    continue
+                nrec = len(table['records'])
+                names = [record[unique_var_name] for record in table['records'].values()]
+                print(f'    number of variables: {nrec}')
+                n = len(set(names))
+                print(f'    number of unique names: {n}')
+                if n != nrec:
+                    print(f'\n--> "{unique_var_name}" was not unique in base: {base_name}\n')
 
 
 if __name__ == '__main__':
