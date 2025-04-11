@@ -11,38 +11,7 @@ Usage:
 '''
 import argparse
 import json
-
-parser = argparse.ArgumentParser(description='Simple script to check consistency of links between tables in json file created by airtable_export.py.')
-parser.add_argument('filepath', type=str, help=\
-                    f'exported content json file to check')
-parser.add_argument('-r', '--release', type=str, default='', help=\
-                    'if this is an official release export, give the release tag (example: -r v1.0beta)')
-args = parser.parse_args()
-
-
-unique_var_name = 'CMIP6 Compound Name'
-fail_on_uid_check = True
-if args.release == '':
-    # working base
-    fail_on_uid_check = False
-else:
-    assert args.release.startswith('v')
-    ver_num = float(args.release.strip('v'))
-    if ver_num < 1.2:
-        unique_var_name = 'Compound Name'
-
-filepath = args.filepath
-with open(filepath, 'r') as f:
-    bases = json.load(f)
-    print(f'Opened {filepath}')
-
-# Show names of bases, their tables, and number of records in each table
-for base_name, tables in bases.items():
-    print(base_name)
-    for table_name, table in tables.items():
-        nrec = len(table['records'])
-        print(f'  {table_name}  ({nrec} records)')
-
+import re
 
 def check_aeid(aeid : str, aeid_type : str) -> bool:
     '''
@@ -56,118 +25,170 @@ def check_aeid(aeid : str, aeid_type : str) -> bool:
     prefix = aeid_prefix[aeid_type]
     return isinstance(aeid, str) and aeid.startswith(prefix) and len(aeid) == 17
 
-# Loop over all records (all tables of all bases) to check:
-# - integrity of record links in each base
-# - uniqueness of uid (unique identifier, example: "3ba74dd0-8ca2-11ef-944e-41a8eb05f654")
-all_uid = set()
-non_unique_uid = set()
-for base_name, tables in bases.items():
-    print('\n' + base_name)
-
-    table_id2name = {table['id'] : table['name'] for table in tables.values()} # given table id, look up table name
-    n = len(tables)
-    assert len(set(table_id2name.keys())) == n, 'table ids are not unique'
-    assert len(set(table_id2name.values())) == n, 'table names are not unique'
-
-    # For the tables in this base, check that linked records point to valid records in the indicated linked table
-    for table_name, table in tables.items():
-        print(table_name)
-
-        # if args.release == '':  # if this is a working bases export
-
-        #     # Fixing issue with non-unique field names in v1.0 working bases export
-        #     remove_field_id = []
-        #     for field_id, field in table['fields'].items():
-        #         if table_name == 'Experiment Group':
-        #             pass
-        #             # if field['name'] == 'Experiments' and field['description'] is None:
-        #             #     remove_field_id.append(field_id)
-        #         elif table_name == 'Opportunity':
-        #             if field['name'] == 'Comments' and field['description'] is None:
-        #                 remove_field_id.append(field_id)
-        #         elif table_name == 'Variable':
-        #             if field['name'] == 'Comments' and field['description'] is None:
-        #                 remove_field_id.append(field_id)
-
-        #     for field_id in remove_field_id:
-        #         print(f'Removing field {field_id} in table {table_name}')
-        #         table['fields'].pop(field_id)
-        #     del remove_field_id
-
-        # Make dict with info on fields, indexed by field name (instead of field id)
-        fields = {}
-        for field_id, field in table['fields'].items():
-            name = field['name']
-            assert name not in fields, f'field names in table {table_name} are not unique: {name}'
-            fields[name] = field
-
-        records = table['records']
-        for record in records.values():
-            for name in record:
-
-                # Check uniqueness of uid
-                if name.lower() == 'uid':
-                    uid = record[name]
-                    if uid in all_uid:
-                        non_unique_uid.add(uid)
-                    else:
-                        all_uid.add(uid)
-
-                field = fields[name]
-                if 'linked_table_id' in field:
-                    # This field in the record contains a list of links to records in another table
-                    record_links = record[name]  # list of record ids
-
-                    assert isinstance(record_links, list), 'links to other records should be in a list'
-                    # if not isinstance(record_links, list):
-                    #     print(f'Skipping invalid link in {table_name} for field: {name}')
-                    #     continue
-
-                    assert all([check_aeid(aeid, 'record') for aeid in record_links]), 'unrecognized format for record links'
-                    
-                    linked_table_name = table_id2name[ field['linked_table_id'] ]
-                    for aeid in record_links:
-                        assert aeid in tables[linked_table_name]['records'], 'record id not found in linked table'
-
-# If we've got this far without errors, the integrity of links is ok.
-print('\nNo link errors found in exported Airtable bases')
-
-print(f'\nFound {len(all_uid)} unique identifiers (UID)')
-if len(non_unique_uid) > 0:
-    filepath = 'non_unique_uid.txt'
-    with open(filepath, 'w') as f:
-        f.write('\n'.join(sorted(non_unique_uid)))
-    msg = f'{len(non_unique_uid)} of these UIDs were not actually unique!\nWrote ' + filepath
-    if fail_on_uid_check:
-        raise ValueError(msg)
+def get_dreq_version_tuple(version: str):
+    '''
+    Parse version string to return tuple giving version major, minor (etc) numbers.
+    Examples:
+        get_dreq_version_tuple('v1.2') --> (1,2)
+        get_dreq_version_tuple('v1.0beta') --> (1,0)
+    '''
+    if version == 'dev':
+        # Is a tuple needed/useful for 'dev' versions? Set one just in case.
+        return (0,)
     else:
-        print(msg)
-    
-    # raise ValueError('Another record already used this UID: ' + uid)
+        patt = '[0-9.]*[0-9]'
+        ver_num = re.findall(patt, version)
+        if len(ver_num) != 1:
+            raise ValueError('Ambiguous version string: ' + version)
+        ver_num_str = ver_num[0]
+        return tuple(map(int, ver_num_str.split('.')))
+
+def main():
+
+    parser = argparse.ArgumentParser(description='Simple script to check consistency of links between tables in json file created by airtable_export.py.')
+    parser.add_argument('filepath', type=str, help=\
+                        f'exported content json file to check')
+    parser.add_argument('-r', '--release', type=str, default='', help=\
+                        'if this is an official release export, give the release tag (example: -r v1.0beta)')
+    args = parser.parse_args()
 
 
-# While we're here, check uniqueness of variable names
-if args.release != '':
-    check_base_tables = {
-        f'Data Request {args.release}' : ['Variables'],
-    }
-else:
-    check_base_tables = {
-        'Data Request Variables (Public)' : ['Variable'],
-        # 'Data Request Opportunities (Public)' : ['Variables']
-    }
-for base_name in check_base_tables:
-    print(f'\nChecking uniqueness of "{unique_var_name}" in base: {base_name}')
-    for table_name in check_base_tables[base_name]:
-        print(f'  Checking table: {table_name}')
-        if base_name not in bases:
-            msg = f'Base name not found: "{base_name}"'
-            msg += '\nDoes the release version need to be specified? Invoke with -r option, example: -r v1.0beta'
-            raise Exception(msg)
-        table = bases[base_name][table_name]
-        nrec = len(table['records'])
-        names = [ record[unique_var_name] for record in table['records'].values() ]
-        print(f'    number of variables: {nrec}')
-        n = len(set(names))
-        print(f'    number of unique names: {n}')
+    unique_var_name = 'CMIP6 Compound Name'
+    fail_on_uid_check = True
+    if args.release == '':
+        # working base
+        fail_on_uid_check = False
+    else:
+        ver_num = get_dreq_version_tuple(args.release)
+        if ver_num < (1,2):
+            unique_var_name = 'Compound Name'
 
+    filepath = args.filepath
+    with open(filepath, 'r') as f:
+        bases = json.load(f)
+        print(f'Opened {filepath}')
+
+    # Show names of bases, their tables, and number of records in each table
+    for base_name, tables in bases.items():
+        print(base_name)
+        for table_name, table in tables.items():
+            nrec = len(table['records'])
+            print(f'  {table_name}  ({nrec} records)')
+
+
+    # Loop over all records (all tables of all bases) to check:
+    # - integrity of record links in each base
+    # - uniqueness of uid (unique identifier, example: "3ba74dd0-8ca2-11ef-944e-41a8eb05f654")
+    all_uid = set()
+    non_unique_uid = set()
+    for base_name, tables in bases.items():
+        print('\n' + base_name)
+
+        table_id2name = {table['id'] : table['name'] for table in tables.values()} # given table id, look up table name
+        n = len(tables)
+        assert len(set(table_id2name.keys())) == n, 'table ids are not unique'
+        assert len(set(table_id2name.values())) == n, 'table names are not unique'
+
+        # For the tables in this base, check that linked records point to valid records in the indicated linked table
+        for table_name, table in tables.items():
+            print(table_name)
+
+            # if args.release == '':  # if this is a working bases export
+
+            #     # Fixing issue with non-unique field names in v1.0 working bases export
+            #     remove_field_id = []
+            #     for field_id, field in table['fields'].items():
+            #         if table_name == 'Experiment Group':
+            #             pass
+            #             # if field['name'] == 'Experiments' and field['description'] is None:
+            #             #     remove_field_id.append(field_id)
+            #         elif table_name == 'Opportunity':
+            #             if field['name'] == 'Comments' and field['description'] is None:
+            #                 remove_field_id.append(field_id)
+            #         elif table_name == 'Variable':
+            #             if field['name'] == 'Comments' and field['description'] is None:
+            #                 remove_field_id.append(field_id)
+
+            #     for field_id in remove_field_id:
+            #         print(f'Removing field {field_id} in table {table_name}')
+            #         table['fields'].pop(field_id)
+            #     del remove_field_id
+
+            # Make dict with info on fields, indexed by field name (instead of field id)
+            fields = {}
+            for field_id, field in table['fields'].items():
+                name = field['name']
+                assert name not in fields, f'field names in table {table_name} are not unique: {name}'
+                fields[name] = field
+
+            records = table['records']
+            for record in records.values():
+                for name in record:
+
+                    # Check uniqueness of uid
+                    if name.lower() == 'uid':
+                        uid = record[name]
+                        if uid in all_uid:
+                            non_unique_uid.add(uid)
+                        else:
+                            all_uid.add(uid)
+
+                    field = fields[name]
+                    if 'linked_table_id' in field:
+                        # This field in the record contains a list of links to records in another table
+                        record_links = record[name]  # list of record ids
+
+                        assert isinstance(record_links, list), 'links to other records should be in a list'
+                        # if not isinstance(record_links, list):
+                        #     print(f'Skipping invalid link in {table_name} for field: {name}')
+                        #     continue
+
+                        assert all([check_aeid(aeid, 'record') for aeid in record_links]), 'unrecognized format for record links'
+                        
+                        linked_table_name = table_id2name[ field['linked_table_id'] ]
+                        for aeid in record_links:
+                            assert aeid in tables[linked_table_name]['records'], 'record id not found in linked table'
+
+    # If we've got this far without errors, the integrity of links is ok.
+    print('\nNo link errors found in exported Airtable bases')
+
+    print(f'\nFound {len(all_uid)} unique identifiers (UID)')
+    if len(non_unique_uid) > 0:
+        filepath = 'non_unique_uid.txt'
+        with open(filepath, 'w') as f:
+            f.write('\n'.join(sorted(non_unique_uid)))
+        msg = f'{len(non_unique_uid)} of these UIDs were not actually unique!\nWrote ' + filepath
+        if fail_on_uid_check:
+            raise ValueError(msg)
+        else:
+            print(msg)
+        
+        # raise ValueError('Another record already used this UID: ' + uid)
+
+    # While we're here, check uniqueness of variable names
+    if args.release != '':
+        check_base_tables = {
+            f'Data Request {args.release}' : ['Variables'],
+        }
+    else:
+        check_base_tables = {
+            'Data Request Variables (Public)' : ['Variable'],
+            # 'Data Request Opportunities (Public)' : ['Variables']
+        }
+    for base_name in check_base_tables:
+        print(f'\nChecking uniqueness of "{unique_var_name}" in base: {base_name}')
+        for table_name in check_base_tables[base_name]:
+            print(f'  Checking table: {table_name}')
+            if base_name not in bases:
+                msg = f'Base name not found: "{base_name}"'
+                msg += '\nDoes the release version need to be specified? Invoke with -r option, example: -r v1.0beta'
+                raise Exception(msg)
+            table = bases[base_name][table_name]
+            nrec = len(table['records'])
+            names = [ record[unique_var_name] for record in table['records'].values() ]
+            print(f'    number of variables: {nrec}')
+            n = len(set(names))
+            print(f'    number of unique names: {n}')
+
+if __name__ == '__main__':
+    main()
