@@ -34,12 +34,6 @@ def main():
                         help='if this is an official release export, provide the release tag (example: -r v1.0beta)')
     args = parser.parse_args()
 
-    # If the following variable names occur, check that they're unique
-    check_unique_var_name = []
-    check_unique_var_name.append('Compound Name')
-    check_unique_var_name.append('CMIP6 Compound Name')
-    check_unique_var_name.append('CMIP7 Compound Name')
-    # TO DO: add check based on unique name incorporating branded variables if needed
     fail_on_uid_check = True
     if args.release == '':
         # raw bases (aka "working bases")
@@ -51,11 +45,13 @@ def main():
         print(f'Opened {filepath}')
 
     # Show names of bases, their tables, and number of records in each table
+    print(f'\nFound {len(bases)} base')
+    print(f'Names of bases and the tables in each base:\n')
     for base_name, tables in bases.items():
-        print(base_name)
+        print(f'  {base_name}')
         for table_name, table in tables.items():
             nrec = len(table['records'])
-            print(f'  {table_name}  ({nrec} records)')
+            print(f'    {table_name}  ({nrec} records)')
 
     # Loop over all records (all tables of all bases) to check:
     # - integrity of record links in each base
@@ -63,7 +59,7 @@ def main():
     all_uid = set()
     non_unique_uid = set()
     for base_name, tables in bases.items():
-        print('\n' + base_name)
+        print(f'\nChecking for integrity of exported Airtable base: {base_name}')
 
         table_id2name = {table['id']: table['name'] for table in tables.values()}  # given table id, look up table name
         n = len(tables)
@@ -72,7 +68,6 @@ def main():
 
         # For the tables in this base, check that linked records point to valid records in the indicated linked table
         for table_name, table in tables.items():
-            print(table_name)
 
             # Make dict with info on fields, indexed by field name (instead of field id)
             fields = {}
@@ -110,8 +105,10 @@ def main():
                         for aeid in record_links:
                             assert aeid in tables[linked_table_name]['records'], 'record id not found in linked table'
 
-    # If we've got this far without errors, the integrity of links is ok.
-    print('\nNo link errors found in exported Airtable bases')
+        # If we've got this far without errors, the export integrity is ok.
+        # This means that its database structure is internally consistent (links are not broken, etc.)
+        # (It says nothing about the meaning of any of the content!)
+        print('  Integrity ok!')
 
     print(f'\nFound {len(all_uid)} unique identifiers (UID)')
     if len(non_unique_uid) > 0:
@@ -123,6 +120,15 @@ def main():
             raise ValueError(msg)
         else:
             print(msg)
+    else:
+        print(f'All UIDs were unique')
+
+    # If the following variable names occur, check that they're unique
+    check_unique_var_name = []
+    check_unique_var_name.append('Compound Name')
+    check_unique_var_name.append('CMIP6 Compound Name')
+    check_unique_var_name.append('CMIP7 Compound Name')
+    # TO DO: add check based on unique name incorporating branded variables if needed
 
     for unique_var_name in check_unique_var_name:
         # Check uniqueness of variable names
@@ -159,7 +165,6 @@ def main():
                 print(f'    number of unique names: {n}')
                 if n != nrec:
                     print(f'\n--> "{unique_var_name}" was not unique in base: {base_name}\n')
-
 
 if __name__ == '__main__':
     main()
