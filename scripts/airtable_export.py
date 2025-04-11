@@ -15,10 +15,10 @@ from pyairtable import Api
 filepath = '../airtable_export/dreq_raw_export_{timestamp}.json'
 
 parser = argparse.ArgumentParser()
+parser.add_argument('token', type=str, help=\
+                    'Path to text file containing Airtable token (required)')
 parser.add_argument('-f', '--filepath', type=str, default=filepath, help=\
                     f'Filepath at which to store exported Airtable content, default: {filepath}')
-parser.add_argument('-t', '--token', type=str, help=\
-                    'Path to text file containing Airtable token (required)')
 args = parser.parse_args()
 
 # Record date & time of this export
