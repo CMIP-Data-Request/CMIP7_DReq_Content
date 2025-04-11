@@ -115,13 +115,13 @@ def main():
         filepath = 'non_unique_uid.txt'
         with open(filepath, 'w') as f:
             f.write('\n'.join(sorted(non_unique_uid)))
-        msg = f'{len(non_unique_uid)} of these UIDs were not actually unique!\nWrote ' + filepath
+        msg = f'  {len(non_unique_uid)} of these UIDs were not actually unique!\n  Wrote ' + filepath
         if fail_on_uid_check:
             raise ValueError(msg)
         else:
             print(msg)
     else:
-        print(f'All UIDs were unique')
+        print(f'  All UIDs were unique!')
 
     # If the following variable names occur, check that they're unique
     check_unique_var_name = []
