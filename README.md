@@ -2,7 +2,7 @@
 
 This repository version controls the information used in the data request, which is referred to as the data request "content".
 It is versioned separately from the data request software, which provides an interface to query and utilize the content. 
-The files in this repository function as input to the software; they are not intended to be accessed directly by users.
+**The files in this repository function as input to the software and are not intended to be accessed directly by users.**
 For further explanation, please see the guidance provided in the [software repository](https://github.com/CMIP-Data-Request/CMIP7_DReq_Software).
 
 
