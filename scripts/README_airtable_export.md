@@ -48,7 +48,7 @@ source dreq_export_v1/bin/activate   # replace dreq_export_v1 with the path to y
 cd CMIP7_DReq_Content/scripts
 ./airtable_export.py my_token_file -f ../airtable_export/my_export_file.json
 ```
-The positional argument (`my_token_file`) is the name of a file containing the Airtable token (how to create this file is explained further below).
+The positional argument (`my_token_file`) is the name of a file containing the Airtable token (how to create this file is explained below).
 If the optional filename (`-f`) argument is omitted then a default output filename will be used (example: `dreq_raw_export_2024-09-25_04h09m51sUTC.json`).
 
 Exports should go into the `airtable_export/` directory.
@@ -60,7 +60,7 @@ dreq_raw_export.json  # content of working bases
 When an official (tagged) release is done, both the above files should be created at the (approximate) same time, so that for the same tag the content of `dreq_raw_export.json` is consistent with `dreq_release_export.json`.
 In between releases, `dreq_raw_export.json` might be created and committed if needed (without modifying `dreq_release_export.json` on the same commit).
 
-Other filenames for exported json files should not be commited to the repository, to avoid bloating it with unnecessary data (export files are typically ~20-40 MB each).
+Other filenames for exported json files should not be commited to this repository, to avoid bloating it with unnecessary data (export files are typically ~20-40 MB each).
 
 ### How to check export integrity
 
@@ -73,7 +73,7 @@ If the export is an official release, the version tag needs to be added, e.g.:
 ./integrity_check.py ../airtable_export/my_export_file.json -r v1.2.1
 ```
 The script writes information about the check to stdout, and raises errors for problems.
-If the checks fail, the export file should not be committed to the repository.
+If the checks fail, the export file should not be committed to the repository!
 
 ### Full example
 
@@ -97,7 +97,7 @@ git push --set-upstream origin v1.2rc
 where in this example it's a official release, so "v1.2rc" means v1.2 release candidate.
 Then open a pull request for this branch [on github](https://github.com/CMIP-Data-Request/CMIP7_DReq_Content).
 Ensure the `main` branch target repository is correct.
-By default it's  `WCRP-CMIP/CMIP7_DReq_Content`, but should be switched `CMIP-Data-Request/CMIP7_DReq_Content` if development is happening there.
+By default it's  `WCRP-CMIP/CMIP7_DReq_Content`, but it should be switched `CMIP-Data-Request/CMIP7_DReq_Content` if development is happening there.
 
 
 ## How to generate an Airtable token
@@ -108,7 +108,7 @@ Tokens are not meant to be shared with others, and shouldn't be committed to thi
 
 In the web browser, sign into an Airtable account with access to the bases, go to the [token creation page](https://airtable.com/create/tokens), and click "Create new token".
 The "Scopes" and "Access" for the token need to be added (some explanation of these is [here](https://airtable.com/developers/web/api/scopes)).
-Add only the scopes that give read permission:
+For "Scopes", select these ones:
 ```
 data.records:read
 See the data in records
@@ -116,15 +116,16 @@ See the data in records
 schema.bases:read
 See the structure of a base, like table names or field types
 ```
+These scopes give read permission for records and schema information.
 "Access" controls which bases are accessible via the token.
-For the working version public bases (for the "raw export") scroll to find:
+For the working version public bases (for the "raw export"), scroll to find:
 ```
 Data Request Opportunities (Public)
 Data Request Physical Parameters (Public)
 Data Request Variables (Public)
 ```
-and add all of them.
-For a release base scroll to find (e.g. for v1.2 of the data request):
+and add all of these.
+For a release base, scroll to find (e.g., for v1.2 of the data request):
 ```
 Data Request v1.2
 ```
