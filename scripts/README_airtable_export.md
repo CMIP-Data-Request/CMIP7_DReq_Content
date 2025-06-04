@@ -1,6 +1,25 @@
-This explains how to export the Airtable content to json, and what's in the export.
-The description here is reference for developers, and is given in detail to ensure reproducibility of the workflow.
-**The json file of exported content is not intended for direct use by general users of the data request software**.
+This explains how to export the Airtable content to json, and what is in the export.
+**The json file of exported content is not intended to be accessed directly by users**.
+The description here is intended as a reference, to ensure reproducibility of the workflow.
+
+## Background
+
+Airtable databases ("bases") maintained by the CMIP IPO and Data Request Task Team are the source of the content (the "source of truth").
+Airtable was used to manage the information gathered by the extensive community consultation undertaken to develop the CMIP7 data request.
+This github repository (CMIP7_DReq_Content) stores exports of the content from Airtable as `json` files, and basic explanation of their format can be [found here](#structure-of-the-exported-content).
+It also stores scripts used to export the content and do basic checks on its validity.
+
+There are two types of export file:
+
+- `dreq_release_export.json` contains the content of an official data request release. New versions of this file correspond official data request releases (e.g., `v1.2.1`) and are tagged with the version identifier in this repository. **This is the export file that is relevant to users, but (as noted above) they do not need to access it directly.** By default a tagged version of this file is automatically accessed when using the [software](https://github.com/CMIP-Data-Request/CMIP7_DReq_Software). 
+
+- `dreq_raw_export.json` contains the content of the "working" bases used by the Data Request Task Team, CMIP IPO, and Thematic Author Teams to develop the data request. **This export file is intended for use by developers; users of the data request should not need to access it.** It may be updated on an ongoing basis (i.e., between official data request releases). Its format differs slightly from that of `dreq_release_export.json`, but for tagged versions its information content should be consistent with `dreq_release_export.json`.
+
+The reason that the data request content is stored in a separate repository (i.e., this one) is to create a clean separation between versioning of the data request content and versioning of the data request software.
+The [data request software](https://github.com/CMIP-Data-Request/CMIP7_DReq_Software) provides an interface to query and utilize the content. 
+The content is accessed "under the hood" when using the software, by downloading and locally caching the appropriate json file for a given data request version.
+This process is handled automatically, requiring no manual intervention from the user.
+Further guidance is provided in the [software repository](https://github.com/CMIP-Data-Request/CMIP7_DReq_Software).
 
 
 ## How to export Airtable data request content
