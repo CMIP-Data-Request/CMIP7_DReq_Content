@@ -1,0 +1,14 @@
+{
+    "Header": {
+        "Comment": "This file lists versions of other repositories that correspond to a given data request version."
+    },
+    "Variable register": {
+        "Description": "Specify which version of CMIP Variable Register contains the variables metadata corresponding to the indicated data request version",
+        "v1.2.2": {
+            "repository": "github URL goes here",
+            "tag": "dreq_v1.2.2",
+            "commit": "commit hash in the variable register goes here",
+            "DOI": "DOI or zenodo link can go here"
+        }
+    }
+}
